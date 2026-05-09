@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/yourusername/apirestgo-ia/models"
-	"github.com/yourusername/apirestgo-ia/routes"
-	"github.com/yourusername/apirestgo-ia/storage"
+	"github.com/YtalloXD/apirestgo-ia/models"
+	"github.com/YtalloXD/apirestgo-ia/routes"
+	"github.com/YtalloXD/apirestgo-ia/storage"
 )
 
 const (

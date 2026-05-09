@@ -3,9 +3,9 @@ package routes
 import (
 	"net/http"
 
+	"github.com/YtalloXD/apirestgo-ia/handlers"
+	"github.com/YtalloXD/apirestgo-ia/storage"
 	"github.com/gorilla/mux"
-	"github.com/yourusername/apirestgo-ia/handlers"
-	"github.com/yourusername/apirestgo-ia/storage"
 )
 
 // SetupRoutes configures all API routes and returns the router

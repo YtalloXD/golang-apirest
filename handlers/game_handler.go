@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/YtalloXD/apirestgo-ia/models"
+	"github.com/YtalloXD/apirestgo-ia/storage"
 	"github.com/gorilla/mux"
-	"github.com/yourusername/apirestgo-ia/models"
-	"github.com/yourusername/apirestgo-ia/storage"
 )
 
 // GameHandler contains all HTTP handlers for game operations

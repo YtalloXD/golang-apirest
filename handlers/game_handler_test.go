@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yourusername/apirestgo-ia/models"
-	"github.com/yourusername/apirestgo-ia/storage"
+	"github.com/YtalloXD/apirestgo-ia/models"
+	"github.com/YtalloXD/apirestgo-ia/storage"
 )
 
 // TestCreateGame tests the CreateGame handler

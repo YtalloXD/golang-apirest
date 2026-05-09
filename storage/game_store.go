@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/yourusername/apirestgo-ia/models"
+	"github.com/YtalloXD/apirestgo-ia/models"
 )
 
 var (

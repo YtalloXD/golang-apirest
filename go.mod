@@ -1,4 +1,4 @@
-module github.com/yourusername/apirestgo-ia
+module github.com/YtalloXD/apirestgo-ia
 
 go 1.21
 
