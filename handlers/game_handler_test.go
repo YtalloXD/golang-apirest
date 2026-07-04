@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,12 +10,69 @@ import (
 	"time"
 
 	"github.com/YtalloXD/apirestgo-ia/models"
-	"github.com/YtalloXD/apirestgo-ia/storage"
+	"github.com/YtalloXD/apirestgo-ia/repository"
+	"github.com/gorilla/mux"
 )
 
-// TestCreateGame tests the CreateGame handler
+type fakeGameRepository struct {
+	games map[string]*models.Game
+}
+
+func newFakeGameRepository() *fakeGameRepository {
+	return &fakeGameRepository{games: make(map[string]*models.Game)}
+}
+
+func (r *fakeGameRepository) GetAll(ctx context.Context) ([]*models.Game, error) {
+	games := make([]*models.Game, 0, len(r.games))
+	for _, game := range r.games {
+		games = append(games, game)
+	}
+	return games, nil
+}
+
+func (r *fakeGameRepository) GetByID(ctx context.Context, id string) (*models.Game, error) {
+	game, ok := r.games[id]
+	if !ok {
+		return nil, repository.ErrGameNotFound
+	}
+	return game, nil
+}
+
+func (r *fakeGameRepository) Create(ctx context.Context, game *models.Game) error {
+	r.games[game.ID] = game
+	return nil
+}
+
+func (r *fakeGameRepository) Update(ctx context.Context, id string, game *models.Game) error {
+	if _, ok := r.games[id]; !ok {
+		return repository.ErrGameNotFound
+	}
+	game.ID = id
+	r.games[id] = game
+	return nil
+}
+
+func (r *fakeGameRepository) PartialUpdate(ctx context.Context, id string, updates map[string]interface{}) (*models.Game, error) {
+	game, err := r.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if name, ok := updates["game_name"].(string); ok {
+		game.GameName = name
+	}
+	return game, nil
+}
+
+func (r *fakeGameRepository) Delete(ctx context.Context, id string) error {
+	if _, ok := r.games[id]; !ok {
+		return repository.ErrGameNotFound
+	}
+	delete(r.games, id)
+	return nil
+}
+
 func TestCreateGame(t *testing.T) {
-	store := storage.NewGameStore()
+	store := newFakeGameRepository()
 	handler := NewGameHandler(store)
 
 	game := models.Game{
@@ -44,12 +102,10 @@ func TestCreateGame(t *testing.T) {
 	}
 }
 
-// TestGetAllGames tests the GetAllGames handler
 func TestGetAllGames(t *testing.T) {
-	store := storage.NewGameStore()
+	store := newFakeGameRepository()
 	handler := NewGameHandler(store)
 
-	// Add test data
 	game := models.Game{
 		ID:          "1",
 		GameName:    "Test Game",
@@ -58,7 +114,7 @@ func TestGetAllGames(t *testing.T) {
 		ReleaseDate: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
 		GameGenre:   "RPG",
 	}
-	store.Create(&game)
+	store.Create(context.Background(), &game)
 
 	req := httptest.NewRequest("GET", "/api/games", nil)
 	w := httptest.NewRecorder()
@@ -82,12 +138,10 @@ func TestGetAllGames(t *testing.T) {
 	}
 }
 
-// TestDeleteGame tests the DeleteGame handler
 func TestDeleteGame(t *testing.T) {
-	store := storage.NewGameStore()
+	store := newFakeGameRepository()
 	handler := NewGameHandler(store)
 
-	// Add test data
 	game := models.Game{
 		ID:          "1",
 		GameName:    "Test Game",
@@ -96,9 +150,10 @@ func TestDeleteGame(t *testing.T) {
 		ReleaseDate: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
 		GameGenre:   "RPG",
 	}
-	store.Create(&game)
+	store.Create(context.Background(), &game)
 
 	req := httptest.NewRequest("DELETE", "/api/games/1", nil)
+	req = mux.SetURLVars(req, map[string]string{"id": "1"})
 	w := httptest.NewRecorder()
 
 	handler.DeleteGame(w, req)
@@ -107,19 +162,18 @@ func TestDeleteGame(t *testing.T) {
 		t.Errorf("Expected status 204, got %d", w.Code)
 	}
 
-	// Verify game is deleted
-	_, err := store.GetByID("1")
-	if err != storage.ErrGameNotFound {
+	_, err := store.GetByID(context.Background(), "1")
+	if err != repository.ErrGameNotFound {
 		t.Errorf("Expected game to be deleted")
 	}
 }
 
-// TestGameNotFound tests the 404 error handling
 func TestGameNotFound(t *testing.T) {
-	store := storage.NewGameStore()
+	store := newFakeGameRepository()
 	handler := NewGameHandler(store)
 
 	req := httptest.NewRequest("GET", "/api/games/999", nil)
+	req = mux.SetURLVars(req, map[string]string{"id": "999"})
 	w := httptest.NewRecorder()
 
 	handler.GetGameByID(w, req)

@@ -5,17 +5,17 @@ import (
 	"net/http"
 
 	"github.com/YtalloXD/apirestgo-ia/models"
-	"github.com/YtalloXD/apirestgo-ia/storage"
+	"github.com/YtalloXD/apirestgo-ia/repository"
 	"github.com/gorilla/mux"
 )
 
 // GameHandler contains all HTTP handlers for game operations
 type GameHandler struct {
-	store *storage.GameStore
+	store repository.GameRepository
 }
 
 // NewGameHandler creates and returns a new GameHandler
-func NewGameHandler(store *storage.GameStore) *GameHandler {
+func NewGameHandler(store repository.GameRepository) *GameHandler {
 	return &GameHandler{store: store}
 }
 
@@ -50,7 +50,12 @@ func (h *GameHandler) SuccessResponse(w http.ResponseWriter, statusCode int, dat
 
 // GetAllGames handles GET / - retrieve all games
 func (h *GameHandler) GetAllGames(w http.ResponseWriter, r *http.Request) {
-	games := h.store.GetAll()
+	games, err := h.store.GetAll(r.Context())
+	if err != nil {
+		h.ErrorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	h.SuccessResponse(w, http.StatusOK, games, "Games retrieved successfully")
 }
 
@@ -59,9 +64,9 @@ func (h *GameHandler) GetGameByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	game, err := h.store.GetByID(id)
+	game, err := h.store.GetByID(r.Context(), id)
 	if err != nil {
-		if err == storage.ErrGameNotFound {
+		if err == repository.ErrGameNotFound {
 			h.ErrorResponse(w, http.StatusNotFound, "Game not found")
 		} else {
 			h.ErrorResponse(w, http.StatusBadRequest, err.Error())
@@ -89,7 +94,7 @@ func (h *GameHandler) CreateGame(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create the game
-	if err := h.store.Create(&game); err != nil {
+	if err := h.store.Create(r.Context(), &game); err != nil {
 		h.ErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -117,8 +122,8 @@ func (h *GameHandler) UpdateGame(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update the game
-	if err := h.store.Update(id, &game); err != nil {
-		if err == storage.ErrGameNotFound {
+	if err := h.store.Update(r.Context(), id, &game); err != nil {
+		if err == repository.ErrGameNotFound {
 			h.ErrorResponse(w, http.StatusNotFound, "Game not found")
 		} else {
 			h.ErrorResponse(w, http.StatusInternalServerError, err.Error())
@@ -144,9 +149,9 @@ func (h *GameHandler) PartialUpdateGame(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Apply partial updates
-	game, err := h.store.PartialUpdate(id, updates)
+	game, err := h.store.PartialUpdate(r.Context(), id, updates)
 	if err != nil {
-		if err == storage.ErrGameNotFound {
+		if err == repository.ErrGameNotFound {
 			h.ErrorResponse(w, http.StatusNotFound, "Game not found")
 		} else {
 			h.ErrorResponse(w, http.StatusInternalServerError, err.Error())
@@ -162,8 +167,8 @@ func (h *GameHandler) DeleteGame(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	if err := h.store.Delete(id); err != nil {
-		if err == storage.ErrGameNotFound {
+	if err := h.store.Delete(r.Context(), id); err != nil {
+		if err == repository.ErrGameNotFound {
 			h.ErrorResponse(w, http.StatusNotFound, "Game not found")
 		} else {
 			h.ErrorResponse(w, http.StatusBadRequest, err.Error())

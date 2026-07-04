@@ -1,36 +1,45 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
 
+	"github.com/YtalloXD/apirestgo-ia/database"
 	"github.com/YtalloXD/apirestgo-ia/models"
+	"github.com/YtalloXD/apirestgo-ia/repository"
 	"github.com/YtalloXD/apirestgo-ia/routes"
-	"github.com/YtalloXD/apirestgo-ia/storage"
 )
 
-const (
-	port = ":8080"
-)
+const port = ":8080"
 
 func main() {
-	// Initialize the in-memory store
-	gameStore := storage.NewGameStore()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	// Seed initial data for demonstration
-	seedInitialData(gameStore)
+	cfg := database.LoadConfigFromEnv()
+	pool, err := database.NewPostgresPool(ctx, cfg)
+	if err != nil {
+		log.Fatalf("database connection failed: %v", err)
+	}
+	defer pool.Close()
 
-	// Setup routes
-	router := routes.SetupRoutes(gameStore)
+	gameRepository := repository.NewPostgresGameRepository(pool)
+	if err := gameRepository.Migrate(ctx); err != nil {
+		log.Fatalf("database migration failed: %v", err)
+	}
 
-	// Add middleware for logging
+	if err := seedInitialData(ctx, gameRepository); err != nil {
+		log.Printf("seed skipped: %v", err)
+	}
+
+	router := routes.SetupRoutes(gameRepository)
 	router.Use(loggingMiddleware)
 
-	// Start server
-	fmt.Printf("🎮 Video Games API Server starting on http://localhost%s\n", port)
-	fmt.Println("📝 Available endpoints:")
+	fmt.Printf("Video Games API Server starting on http://localhost%s\n", port)
+	fmt.Println("Available endpoints:")
 	fmt.Println("   GET    /api/games          - Get all games")
 	fmt.Println("   POST   /api/games          - Create a new game")
 	fmt.Println("   GET    /api/games/{id}     - Get a specific game")
@@ -42,8 +51,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(port, router))
 }
 
-// seedInitialData populates the store with sample data
-func seedInitialData(store *storage.GameStore) {
+func seedInitialData(ctx context.Context, repo *repository.PostgresGameRepository) error {
 	games := []models.Game{
 		{
 			ID:          "1",
@@ -79,16 +87,9 @@ func seedInitialData(store *storage.GameStore) {
 		},
 	}
 
-	for i := range games {
-		if err := store.Create(&games[i]); err != nil {
-			log.Printf("Error seeding game %s: %v", games[i].ID, err)
-		}
-	}
-
-	fmt.Println("✅ Seeded initial data with 4 games")
+	return repo.Seed(ctx, games)
 }
 
-// loggingMiddleware logs HTTP requests
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("[%s] %s %s\n", time.Now().Format("15:04:05"), r.Method, r.RequestURI)

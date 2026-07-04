@@ -4,12 +4,12 @@ import (
 	"net/http"
 
 	"github.com/YtalloXD/apirestgo-ia/handlers"
-	"github.com/YtalloXD/apirestgo-ia/storage"
+	"github.com/YtalloXD/apirestgo-ia/repository"
 	"github.com/gorilla/mux"
 )
 
 // SetupRoutes configures all API routes and returns the router
-func SetupRoutes(store *storage.GameStore) *mux.Router {
+func SetupRoutes(store repository.GameRepository) *mux.Router {
 	router := mux.NewRouter()
 
 	// Create handlers
